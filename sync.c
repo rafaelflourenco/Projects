@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
 #define MAX_PATH_LENGTH 4096
 #define LOG_FILE "sync_log.txt"
@@ -63,8 +64,7 @@ void synchronizeDirectories(const char *sourcePath, const char *replicaPath){
                 }
             }
             else{
-               // Need to work in possible errors 
-               printf("Erro no stat\n");
+               printf("n");
             }   
         }
     }
@@ -115,27 +115,31 @@ void logOperation(const char *operation, const char *filePath) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        printf("No directories provided");
+    if (argc != 4) {
+        printf("Provide both directories paths and the time interval you want the directories to be synchronized\n");
         exit(EXIT_FAILURE);
     }
 
     const char *sourcePath = argv[1];
     const char *replicaPath = argv[2];
-    logOperation("Program Start", "N/A");
+    int syncInterval = atoi(argv[3]);
 
+    while (1) {
+        // Log program start
+        logOperation("Program Start", "N/A");
 
-    synchronizeDirectories(sourcePath, replicaPath);
+        synchronizeDirectories(sourcePath, replicaPath);
 
-    logOperation("Program End", "N/A");
+        // Log program end
+        logOperation("Program End", "N/A");
 
-
-    printf("Folders synchronized successfully!\n");
+        // Sleep for the specified interval before starting the next synchronization
+        sleep(syncInterval);
+    }
 
     return EXIT_SUCCESS;
-}
-
+}                   
 
 
 // gcc sync.c -o sync_folders
-//  ./sync_folders /Users/rafaellourenco/Downloads/Uni/VS/Test1 /Users/rafaellourenco/Downloads/Uni/VS/Test2
+//  ./sync_folders /Users/rafaellourenco/Downloads/Uni/VS/Test1 /Users/rafaellourenco/Downloads/Uni/VS/Test2 100
