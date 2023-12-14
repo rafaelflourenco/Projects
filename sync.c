@@ -101,12 +101,32 @@ void removeFileOrDirectory(const char *path) {
     struct stat pathStat;
     if (stat(path, &pathStat) == 0) {
         if (S_ISDIR(pathStat.st_mode)) {
-            // Remove directory
+            // Directory exists, remove its contents first
+            DIR *dir = opendir(path);
+            if (dir != NULL) {
+                struct dirent *entry;
+                while ((entry = readdir(dir)) != NULL) {
+                    if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                        char entryPath[MAX_PATH_LENGTH];
+                        snprintf(entryPath, MAX_PATH_LENGTH, "%s/%s", path, entry->d_name);
+
+                        // Recursively remove files in directory
+                        removeFileOrDirectory(entryPath);
+                    }
+                }
+                closedir(dir);
+            } else {
+                perror("Error opening directory");
+                exit(EXIT_FAILURE);
+            }
+
+            // Remove the now empty directory
             if (rmdir(path) != 0) {
                 perror("Error removing directory");
                 exit(EXIT_FAILURE);
             }
-        } else {
+        }
+        else {
             // Remove file
             if (remove(path) != 0) {
                 perror("Error removing file");
