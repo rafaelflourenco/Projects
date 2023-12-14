@@ -3,11 +3,14 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #define MAX_PATH_LENGTH 4096
+#define LOG_FILE "sync_log.txt"
 
 void synchronizeDirectories(const char *sourcePath, const char *replicaPath);
 void copyFiles(const char *sourcePath, const char *replicaPath);
+void logOperation(const char *operation, const char *filePath);
 
 void synchronizeDirectories(const char *sourcePath, const char *replicaPath){
     DIR  *sourceDir, *replicaDir;
@@ -46,12 +49,15 @@ void synchronizeDirectories(const char *sourcePath, const char *replicaPath){
                     if (stat(replicaFilePath, &replicaStat) != 0) {
                         FILE *replicaFile = fopen(replicaFilePath, "w");
                         if (replicaFile != NULL) {
+                            logOperation("File Created", replicaFilePath);
                             fclose(replicaFile);
+
                         } else {
                             perror("Error creating replica file");
                             exit(EXIT_FAILURE);
                         }
                     }
+                    logOperation("File Copied", replicaFilePath);
                     //copy the file to the replica
                     copyFiles(sourceFilePath, replicaFilePath);
                 }
@@ -59,7 +65,6 @@ void synchronizeDirectories(const char *sourcePath, const char *replicaPath){
             else{
                // Need to work in possible errors 
                printf("Erro no stat\n");
-
             }   
         }
     }
@@ -87,6 +92,28 @@ void copyFiles(const char *sourcePath, const char *replicaPath) {
     fclose(replicaFile);
 }
 
+void logOperation(const char *operation, const char *filePath) {
+    // Get the current time
+    time_t currentTime;
+    time(&currentTime);
+    struct tm *localTime = localtime(&currentTime);
+
+    // Open the log file in append mode
+    FILE *logFile = fopen(LOG_FILE, "a");
+    if (logFile != NULL) {
+        // Log the operation with timestamp to both the file and console
+        fprintf(logFile, "[%04d-%02d-%02d %02d:%02d:%02d] %s: %s\n",
+                localTime->tm_year + 1900, localTime->tm_mon + 1, localTime->tm_mday,
+                localTime->tm_hour, localTime->tm_min, localTime->tm_sec,
+                operation, filePath);
+        printf("[%s] %s\n", operation, filePath);
+        fclose(logFile);
+    } else {
+        perror("Error opening log file");
+        exit(EXIT_FAILURE);
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 3) {
         printf("No directories provided");
@@ -95,8 +122,13 @@ int main(int argc, char *argv[]) {
 
     const char *sourcePath = argv[1];
     const char *replicaPath = argv[2];
+    logOperation("Program Start", "N/A");
+
 
     synchronizeDirectories(sourcePath, replicaPath);
+
+    logOperation("Program End", "N/A");
+
 
     printf("Folders synchronized successfully!\n");
 
@@ -105,5 +137,5 @@ int main(int argc, char *argv[]) {
 
 
 
-// gcc folder.c -o sync_folders
-//  ./sync_folders
+// gcc sync.c -o sync_folders
+//  ./sync_folders /Users/rafaellourenco/Downloads/Uni/VS/Test1 /Users/rafaellourenco/Downloads/Uni/VS/Test2
