@@ -12,6 +12,8 @@
 void synchronizeDirectories(const char *sourcePath, const char *replicaPath);
 void copyFiles(const char *sourcePath, const char *replicaPath);
 void logOperation(const char *operation, const char *filePath);
+void removeFileOrDirectory(const char *path);
+
 
 void synchronizeDirectories(const char *sourcePath, const char *replicaPath){
     DIR  *sourceDir, *replicaDir;
@@ -24,7 +26,25 @@ void synchronizeDirectories(const char *sourcePath, const char *replicaPath){
         printf("Error opening directories\n");
         return;
     }
-    
+
+    while ((replicaEntry = readdir(replicaDir)) != NULL) {
+        if (strcmp(replicaEntry->d_name, ".") != 0 && strcmp(replicaEntry->d_name, "..") != 0) {
+            char sourceFilePath[MAX_PATH_LENGTH];
+            char replicaFilePath[MAX_PATH_LENGTH];
+
+            snprintf(sourceFilePath, MAX_PATH_LENGTH, "%s/%s", sourcePath, replicaEntry->d_name);
+            snprintf(replicaFilePath, MAX_PATH_LENGTH, "%s/%s", replicaPath, replicaEntry->d_name);
+
+            struct stat sourceStat;
+            if (stat(sourceFilePath, &sourceStat) != 0) {
+                logOperation("File or Directory Removed", replicaFilePath);
+                removeFileOrDirectory(replicaFilePath);
+            }
+        }
+    }
+
+    rewinddir(replicaDir);
+
     while ((sourceEntry = readdir(sourceDir)) != NULL)
     {
         if (strcmp(sourceEntry->d_name, ".") != 0 && strcmp(sourceEntry->d_name, "..") != 0){
@@ -37,6 +57,14 @@ void synchronizeDirectories(const char *sourcePath, const char *replicaPath){
             struct stat sourceStat, replicaStat;
 
             if (stat(sourceFilePath, &sourceStat) == 0) {
+                if (stat(replicaFilePath, &replicaStat) != 0) {
+                    // Log the removal operation
+                    logOperation("File or Directory Removed", replicaFilePath);
+
+                    // Remove the file or directory from the replica
+                    removeFileOrDirectory(replicaFilePath);
+                }
+
                 if (S_ISDIR(sourceStat.st_mode)) {
                     // If it's a directory, create it in the replica if it doesn't exist
                     if (stat(replicaFilePath, &replicaStat) != 0) {
@@ -62,14 +90,30 @@ void synchronizeDirectories(const char *sourcePath, const char *replicaPath){
                     //copy the file to the replica
                     copyFiles(sourceFilePath, replicaFilePath);
                 }
-            }
-            else{
-               printf("n");
-            }   
+            }  
         }
     }
     closedir(sourceDir);
     closedir(replicaDir);
+}
+
+void removeFileOrDirectory(const char *path) {
+    struct stat pathStat;
+    if (stat(path, &pathStat) == 0) {
+        if (S_ISDIR(pathStat.st_mode)) {
+            // Remove directory
+            if (rmdir(path) != 0) {
+                perror("Error removing directory");
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            // Remove file
+            if (remove(path) != 0) {
+                perror("Error removing file");
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
 }
 
 
@@ -132,8 +176,4 @@ int main(int argc, char *argv[]) {
     }
 
     return EXIT_SUCCESS;
-}                   
-
-
-// gcc sync.c -o sync_folders
-//  ./sync_folders /Users/rafaellourenco/Downloads/Uni/VS/Test1 /Users/rafaellourenco/Downloads/Uni/VS/Test2 100
+}
