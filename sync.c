@@ -93,15 +93,12 @@ void copyFiles(const char *sourcePath, const char *replicaPath) {
 }
 
 void logOperation(const char *operation, const char *filePath) {
-    // Get the current time
     time_t currentTime;
     time(&currentTime);
     struct tm *localTime = localtime(&currentTime);
 
-    // Open the log file in append mode
     FILE *logFile = fopen(LOG_FILE, "a");
     if (logFile != NULL) {
-        // Log the operation with timestamp to both the file and console
         fprintf(logFile, "[%04d-%02d-%02d %02d:%02d:%02d] %s: %s\n",
                 localTime->tm_year + 1900, localTime->tm_mon + 1, localTime->tm_mday,
                 localTime->tm_hour, localTime->tm_min, localTime->tm_sec,
@@ -125,15 +122,12 @@ int main(int argc, char *argv[]) {
     int syncInterval = atoi(argv[3]);
 
     while (1) {
-        // Log program start
         logOperation("Program Start", "N/A");
 
         synchronizeDirectories(sourcePath, replicaPath);
 
-        // Log program end
         logOperation("Program End", "N/A");
 
-        // Sleep for the specified interval before starting the next synchronization
         sleep(syncInterval);
     }
 
